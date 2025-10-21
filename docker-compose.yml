@@ -1,0 +1,164 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  auth-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: auth
+      POSTGRES_DB: auth
+    ports:
+      - "5433:5432" # แค่ expose ออกมาดีบั๊ก; ในเน็ตเวิร์กภายในใช้ 5432 เสมอ
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  user-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+      POSTGRES_DB: user
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d user"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  court-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: court
+      POSTGRES_PASSWORD: court
+      POSTGRES_DB: court
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U court -d court"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  booking-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: booking
+      POSTGRES_PASSWORD: booking
+      POSTGRES_DB: booking
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking -d booking"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./services/auth-service/Dockerfile
+    environment:
+      - PG_AUTH_DSN=${PG_AUTH_DSN}
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_GRPC_ADDR=${AUTH_GRPC_ADDR}
+    depends_on:
+      auth-db:
+        condition: service_healthy
+
+  court-service:
+    build:
+      context: .
+      dockerfile: ./services/court-service/Dockerfile
+    environment:
+      - PG_COURT_DSN=${PG_COURT_DSN}
+      - COURT_GRPC_ADDR=${COURT_GRPC_ADDR}
+    depends_on:
+      court-db:
+        condition: service_healthy
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: services/booking-service/Dockerfile
+    environment:
+      - PG_BOOKING_DSN=${PG_BOOKING_DSN}
+      - BOOKING_GRPC_ADDR=${BOOKING_GRPC_ADDR}
+      - RABBIT_URL=${RABBIT_URL}
+      - MQ_EXCHANGE=${MQ_EXCHANGE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      booking-db:
+        condition: service_healthy
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: ./services/payment-service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - OMISE_PUBLIC_KEY=${OMISE_PUBLIC_KEY}
+      - OMISE_SECRET_KEY=${OMISE_SECRET_KEY}
+      - OMISE_API_VERSION=${OMISE_API_VERSION}
+      - PAYMENT_WEBHOOK_HTTP_ADDR=${PAYMENT_WEBHOOK_HTTP_ADDR}
+      - BOOKING_GRPC_ADDR=${BOOKING_GRPC_ADDR}
+      - RABBIT_URL=${RABBIT_URL}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    environment:
+      - RABBIT_URL=${RABBIT_URL}
+      - MQ_EXCHANGE=${MQ_EXCHANGE}
+      - NOTIFY_QUEUE=${NOTIFY_QUEUE}
+      - NOTIFY_BINDINGS=${NOTIFY_BINDINGS}
+      - NOTIFY_DLX=${NOTIFY_DLX}
+      - NOTIFY_DLQ=${NOTIFY_DLQ}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    environment:
+      - PG_USER_DSN=${PG_USER_DSN}
+      - USER_GRPC_ADDR=:50055
+    depends_on:
+      user-db:
+        condition: service_healthy
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./services/api-gateway/Dockerfile
+    environment:
+      - AUTH_GRPC_ADDR=${AUTH_GRPC_ADDR}
+      - COURT_GRPC_ADDR=${COURT_GRPC_ADDR}
+      - BOOKING_GRPC_ADDR=${BOOKING_GRPC_ADDR}
+      - PAYMENT_GRPC_ADDR=${PAYMENT_GRPC_ADDR}
+      - USER_GRPC_ADDR=${USER_GRPC_ADDR}
+      - PG_AUTH_DSN=${PG_AUTH_DSN}
+      - GATEWAY_HTTP_ADDR=${GATEWAY_HTTP_ADDR}
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    depends_on: [auth-service, court-service]

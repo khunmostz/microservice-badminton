@@ -1,0 +1,61 @@
+syntax = "proto3";
+package booking.v1;
+option go_package = "github.com/you/badminton-booking/proto/booking/v1;bookingv1";
+
+
+enum BookingStatus {
+BOOKING_STATUS_UNSPECIFIED = 0;
+PENDING = 1;
+CONFIRMED = 2;
+CANCELLED = 3;
+}
+
+
+message Booking {
+string id = 1;
+string user_id = 2;
+string court_id = 3;
+string start_iso = 4; // RFC3339 UTC
+string end_iso = 5; // RFC3339 UTC
+BookingStatus status = 6;
+}
+
+
+message CreateBookingRequest {
+string user_id = 1; // Gateway should populate from JWT
+string court_id = 2;
+string start_iso = 3; // RFC3339
+string end_iso = 4; // RFC3339
+}
+message CreateBookingResponse { Booking booking = 1; }
+
+
+message GetBookingRequest { string id = 1; }
+message GetBookingResponse { Booking booking = 1; }
+
+
+message ListBookingRequest {
+int32 page = 1; // 0-based
+int32 page_size = 2; // default 20
+string user_id = 3; // optional filter
+string court_id = 4; // optional filter
+string day_iso = 5; // optional day (RFC3339 date or any RFC3339 time on the day)
+}
+message ListBookingResponse { repeated Booking bookings = 1; int64 total = 2; }
+
+
+message ConfirmBookingRequest { string id = 1; }
+message ConfirmBookingResponse { Booking booking = 1; }
+
+
+message CancelBookingRequest { string id = 1; }
+message CancelBookingResponse { Booking booking = 1; }
+
+
+service BookingService {
+rpc CreateBooking(CreateBookingRequest) returns (CreateBookingResponse);
+rpc GetBooking(GetBookingRequest) returns (GetBookingResponse);
+rpc ListBooking(ListBookingRequest) returns (ListBookingResponse);
+rpc ConfirmBooking(ConfirmBookingRequest) returns (ConfirmBookingResponse);
+rpc CancelBooking(CancelBookingRequest) returns (CancelBookingResponse);
+}

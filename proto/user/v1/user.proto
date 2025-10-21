@@ -1,0 +1,54 @@
+syntax = "proto3";
+package user.v1;
+option go_package = "github.com/you/badminton-booking/proto/user/v1;userv1";
+
+message User {
+    string id = 1;
+    string email = 2;
+    string name = 3;
+    string phone = 4;
+    string avatar_url = 5;
+    string role = 6; // อ้างอิง role จาก auth (USER|OWNER|ADMIN)
+}
+
+message GetUserRequest {
+    string id = 1;
+}
+message GetUserResponse {
+    User user = 1;
+}
+
+message GetMeRequest {}
+message GetMeResponse {
+    User user = 1;
+}
+
+message UpdateUserRequest {
+  string id = 1;        // สำหรับ admin/owner แก้โปรไฟล์คนอื่น, ถ้าไม่ส่งจะถือเป็น me
+  string name = 2;
+  string phone = 3;
+  string avatar_url = 4;
+}
+message UpdateUserResponse { User user = 1; }
+
+message ListUsersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string query = 3; // ค้นจาก email/name
+  string role = 4;  // filter
+}
+message ListUsersResponse {
+  repeated User users = 1;
+  int64 total = 2;
+}
+
+message SyncFromAuthRequest { string email = 1; string name = 2; string role = 3; }
+message SyncFromAuthResponse { User user = 1; }
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc GetMe(GetMeRequest) returns (GetMeResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc SyncFromAuth(SyncFromAuthRequest) returns (SyncFromAuthResponse);
+}

@@ -1,0 +1,45 @@
+syntax = "proto3";
+package payment.v1;
+option go_package = "github.com/you/badminton-booking/proto/payment/v1;paymentv1";
+
+message CreateCardChargeRequest {
+  string booking_id = 1;
+  int64  amount     = 2;
+  string currency   = 3;
+  string card_token = 4;
+}
+message CreateCardChargeResponse {
+  string charge_id = 1;
+  string status    = 2;
+  string authorize_uri = 3;
+}
+
+message CreateSourceChargeRequest {
+  string booking_id = 1;
+  int64  amount     = 2;
+  string currency   = 3;
+  string source_id  = 4;   // เส้นทางเดิม (ถ้ามี)
+  string return_uri = 5;   // สำหรับช่องทางต้อง redirect (จากฝั่ง client เมื่อสร้าง source เอง)
+
+  // NEW: ให้ server สร้าง source ให้ถ้า client ไม่ส่ง source_id
+  string source_type = 6;  // เช่น "promptpay", "internet_banking_kbank"
+}
+message CreateSourceChargeResponse {
+  string charge_id = 1;
+  string authorize_uri = 2;
+  string status = 3;
+}
+
+message GetChargeRequest { string charge_id = 1; }
+message GetChargeResponse {
+  string charge_id = 1;
+  string status = 2;
+  string failure_code = 3;
+  string failure_message = 4;
+}
+
+service PaymentService {
+  rpc CreateCardCharge(CreateCardChargeRequest) returns (CreateCardChargeResponse);
+  rpc CreateSourceCharge(CreateSourceChargeRequest) returns (CreateSourceChargeResponse);
+  rpc GetCharge(GetChargeRequest) returns (GetChargeResponse);
+}

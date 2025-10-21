@@ -1,0 +1,70 @@
+syntax = "proto3";
+package court.v1;
+option go_package = "github.com/you/badminton-booking/proto/court/v1;courtv1";
+
+message Court {
+    string id = 1;
+    string venue = 2; //court name
+    int32 court_no = 3;
+    int64 price_per_hour = 4;
+    string open_from = 5;
+    string open_to = 6;
+    string owner_id = 7; // onwer court
+}
+
+message CreateCourtRequest {
+    string venue = 1;
+    int32 court_no = 2;
+    int64 price_per_hour = 3;
+    string open_from = 4;
+    string open_to = 5;
+}
+
+message CreateCourtResponse {
+    Court court = 1;
+}
+
+message GetCourtRequest {
+    string id = 1;
+}
+
+message GetCourtResponse {
+    Court court = 1;
+}
+
+message ListCourtsRequest {
+    int32 page = 1;
+    int32 page_size = 2;
+    string venue_query = 3;
+}
+
+message ListCourtsResponse {
+    repeated Court courts = 1;
+}
+
+message UpdateCourtRequest {
+    string id = 1;
+    string venue = 2;
+    int32 court_no = 3;
+    int64 price_per_hour = 4;
+    string open_from = 5;
+    string open_to = 6;
+}
+
+message UpdateCourtResponse {
+     Court court = 1;
+}
+
+
+message DeleteCourtRequest {
+     string id = 1;
+}
+message DeleteCourtResponse {}
+
+service CourtService {
+    rpc CreateCourt(CreateCourtRequest) returns (CreateCourtResponse);
+    rpc GetCourt(GetCourtRequest) returns (GetCourtResponse);
+    rpc ListCourts(ListCourtsRequest) returns (ListCourtsResponse);
+    rpc UpdateCourt(UpdateCourtRequest) returns (UpdateCourtResponse);
+    rpc DeleteCourt(DeleteCourtRequest) returns (DeleteCourtResponse);
+}
